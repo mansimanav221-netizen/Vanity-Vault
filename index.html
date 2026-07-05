@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>My Vault List</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Cormorant+Garamond:wght@400;500;600&family=Quicksand:wght@400;500;600;700&display=swap');
+
+:root{
+  --void:#070707;
+  --card:#131010;
+  --crimson:#7A1128;
+  --crimson-bright:#B3122A;
+  --silver-dim:#8a8a92;
+  --ivory:#EDE7E2;
+  --ivory-dim:#a89e9a;
+  --line:#2a2222;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; background:var(--void); color:var(--ivory);
+  font-family:'Cormorant Garamond', serif; font-size:17px;
+  padding:32px 16px 80px; min-height:100vh;
+}
+.wrap{ max-width:560px; margin:0 auto; }
+h1{
+  font-family:'Playfair Display', serif; font-size:28px; text-align:center; margin:0 0 4px; color:var(--ivory);
+}
+.count{
+  text-align:center; font-family:'Quicksand'; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--crimson-bright); margin-bottom:18px;
+}
+.search-box{
+  display:block; width:100%; border:1px solid var(--line); background:var(--card); color:var(--ivory);
+  border-radius:2px; padding:10px 14px; font-family:'Cormorant Garamond'; font-size:15px; outline:none;
+  margin-bottom:18px;
+}
+.search-box::placeholder{ color:var(--ivory-dim); }
+.search-box:focus{ border-color:var(--crimson-bright); }
+
+.tabs{
+  display:flex; gap:6px; overflow-x:auto; padding-bottom:14px; margin-bottom:6px;
+}
+.tab{
+  border:1px solid var(--line); background:var(--card); color:var(--ivory-dim);
+  padding:7px 13px; border-radius:16px; font-family:'Quicksand'; font-weight:600; font-size:12px;
+  cursor:pointer; white-space:nowrap;
+}
+.tab.active{ background:var(--crimson); color:#fff; border-color:var(--crimson-bright); }
+
+.row{
+  display:flex; align-items:center; gap:10px; padding:12px 4px;
+  border-bottom:1px solid var(--line);
+}
+.row-name{ flex:1; font-size:17px; color:var(--ivory); }
+.row-qty{ display:flex; align-items:center; gap:8px; }
+.row-qty button{
+  width:26px; height:26px; border-radius:50%; border:1px solid var(--silver-dim); background:transparent;
+  color:var(--ivory-dim); font-size:15px; cursor:pointer; line-height:1;
+}
+.row-qty button:hover{ border-color:var(--crimson-bright); color:var(--crimson-bright); }
+.row-qty .n{
+  font-family:'Playfair Display'; font-size:17px; min-width:22px; text-align:center; color:var(--ivory);
+}
+.row-del{
+  border:none; background:none; color:var(--silver-dim); font-family:'Quicksand'; font-size:12px;
+  cursor:pointer; padding:4px;
+}
+.row-del:hover{ color:var(--crimson-bright); }
+
+.empty{ text-align:center; color:var(--ivory-dim); font-style:italic; padding:30px 0; }
+
+.add-box{
+  display:flex; gap:8px; margin-top:22px; flex-wrap:wrap; align-items:center;
+}
+.add-box input, .add-box select{
+  border:1px solid var(--line); background:var(--card); color:var(--ivory); border-radius:2px;
+  padding:10px 12px; font-family:'Cormorant Garamond'; font-size:15px; outline:none;
+}
+.add-box input::placeholder{ color:var(--ivory-dim); }
+.add-box input[name="name"]{ flex:1; min-width:140px; }
+.add-box input[name="qty"]{ width:56px; }
+.add-box input:focus, .add-box select:focus{ border-color:var(--crimson-bright); }
+.add-box button{
+  background:var(--crimson); color:#fff; border:1px solid var(--crimson-bright); border-radius:2px;
+  padding:10px 18px; font-family:'Quicksand'; font-weight:700; font-size:12.5px; text-transform:uppercase;
+  letter-spacing:.03em; cursor:pointer;
+}
+.add-box button:hover{ background:var(--crimson-bright); }
+
+.status{ text-align:center; font-family:'Quicksand'; font-size:12px; color:var(--silver-dim); height:16px; margin-top:10px; }
+.note{ text-align:center; font-family:'Quicksand'; font-size:11px; color:var(--ivory-dim); margin-top:6px; font-style:italic; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>My Vault List</h1>
+  <div class="count" id="countLine">loading…</div>
+
+  <input type="text" id="searchInput" placeholder="Find something…" class="search-box">
+
+  <div class="tabs" id="tabs"></div>
+
+  <div id="list"></div>
+  <div class="empty" id="emptyMsg" style="display:none;"></div>
+
+  <div class="add-box" id="addBoxItem">
+    <input type="text" name="name" id="newName" placeholder="Add an item…">
+    <select id="newSection"></select>
+    <input type="number" name="qty" id="newQty" placeholder="Qty" value="1" min="1">
+    <button id="addBtn">Add</button>
+  </div>
+
+  <div class="add-box" id="addBoxWish" style="display:none;">
+    <input type="text" id="wishName" placeholder="Something you're tempted by…" style="flex:1;">
+    <button id="addWishBtn">Add</button>
+  </div>
+
+  <div class="status" id="statusMsg"></div>
+  <div class="note" id="persistNote">Saves automatically on this device.</div>
+</div>
+
+<script>
+const SECTIONS = ["Home Clothes","Kurtas","Skirts","Jeans","Tops","Jewellery","Hair Accessories","Miscellaneous","Makeup"];
+
+const DEFAULT_ITEMS = [
+["Home Clothes","Home Shorts",4],["Home Clothes","Pyjama",2],["Home Clothes","Onesie",1],
+["Home Clothes","Track Pants",4],["Home Clothes","Home Top",12],
+
+["Kurtas","Sari",6],["Kurtas","Full-length Fancy Kurta (black & white)",1],
+["Kurtas","Anarkali Kurta Set (white & dark blue)",1],["Kurtas","Minimal Kurta Set (light blue)",1],
+["Kurtas","Kurta Set w/ red dupatta (black)",2],["Kurtas","Straight Kurta Set (dark green)",2],
+["Kurtas","Kurta Set (white & gray)",1],["Kurtas","Kurta Set (purple)",1],
+["Kurtas","Heavy Straight Kurta Set (colourful beige)",1],["Kurtas","Dupatta (colour)",1],
+["Kurtas","Dupatta (plain white)",1],["Kurtas","Dupatta (dark green, golden work)",1],
+["Kurtas","Anarkali Kurta Set (black & white)",1],["Kurtas","Kurta & Dupatta Set (dark maroon)",1],
+["Kurtas","Kurta Set (maroon)",2],["Kurtas","Single Kurta, home wear",10],["Kurtas","Single Kurta (black)",8],
+["Kurtas","[Ironing] Kurta Set (maroon)",1],["Kurtas","[Ironing] Kurta Set (dark blue)",1],
+["Kurtas","[Ironing] Single Kurta (red)",1],["Kurtas","[Dry Clean] Kurta Set (black)",1],
+["Kurtas","[Stitching] Kurta (white)",2],["Kurtas","[Stitching] Kurta (black)",1],
+["Kurtas","[Stitching] Kurta (blue)",2],["Kurtas","[Stitching] Kurta (yellow)",1],
+["Kurtas","[Stitching] Kurta (pink)",1],
+
+["Skirts","Petticoat Skirt (black)",1],["Skirts","Short Skirt (black & white)",1],
+["Skirts","Short Skirt (maroon)",1],["Skirts","Short Skirt (colorful)",1],["Skirts","Short Skirt (pink & blue)",1],
+["Skirts","Asymmetrical Skirt (black & white)",1],["Skirts","Asymmetrical Skirt (brown)",1],
+["Skirts","Summer Skirt (white)",1],["Skirts","Long Skirt (beige, button pending)",1],
+["Skirts","Long Slit Skirt (brown)",1],["Skirts","Long Skirt (black)",1],["Skirts","Wrap-around Skirt",1],
+["Skirts","Tulle Skirt (black)",1],
+
+["Jeans","Jeans (light)",2],["Jeans","Jeans (dark)",1],["Jeans","Jeans (medium)",4],
+["Jeans","Black Leggings",2],["Jeans","Pants (beige)",2],["Jeans","Pants (white)",1],
+["Jeans","Balloon Pants (black)",1],["Jeans","Trouser (gray)",1],
+
+["Tops","Shirt (black & white)",1],["Tops","Shirt (black)",1],["Tops","Shirt (colorful white)",1],
+["Tops","Shirt (white)",2],["Tops","Top (white)",2],["Tops","Top (light blue)",1],["Tops","Top (black)",22],
+["Tops","Shirt-type Top (blue & white)",1],["Tops","Crop Top (beige)",1],["Tops","Top (maroonish brown)",6],
+["Tops","Crop Top (blue)",1],["Tops","Sweater",5],["Tops","Shawl",1],["Tops","Muffler",1],
+["Tops","Dress (black)",8],["Tops","Dress (white & black)",1],["Tops","Dress (maroon)",1],
+["Tops","Dress (green)",1],["Tops","Beach Dress (black)",1],["Tops","Dress (red)",1],
+["Tops","Dress (blue polka dot)",1],
+
+["Jewellery","Minimal Neckpiece",22],["Jewellery","Brass Ring",3],["Jewellery","Maximal Choker",7],
+["Jewellery","Small Gold Hook Earring",5],["Jewellery","Oxidised Studs",8],["Jewellery","Tiny Hoops",3],
+["Jewellery","Silver Studs",3],["Jewellery","Pink & White Bangles (set)",1],["Jewellery","Big Oxidised Bracelet",1],
+["Jewellery","Oxidised Bangles",4],["Jewellery","Casual Dangle Earring",12],["Jewellery","Big Hoop Earring (black)",1],
+["Jewellery","Big Hoop Earring (silver)",1],["Jewellery","Chain Pendant Necklace",5],
+["Jewellery","Lace Choker (black)",16],["Jewellery","Lace Choker (beige)",1],["Jewellery","Statement Ring",18],
+["Jewellery","Stack Ring — Steel",10],["Jewellery","Stack Ring — Minimal Silver",15],
+["Jewellery","Stack Ring — Traditional Silver",15],["Jewellery","Ear Cuff",18],
+["Jewellery","Novelty Earring (batman/weed)",2],["Jewellery","Spare Star Pendant",1],
+["Jewellery","Big Traditional Earring",5],["Jewellery","Oxidised Jhumka",12],
+
+["Hair Accessories","Hair Ornament Set (gold)",1],["Hair Accessories","Fake Dread (blue)",1],
+["Hair Accessories","Hair Roller",2],
+
+["Miscellaneous","Sling Bag (black)",1],["Miscellaneous","Sling Bag (blue)",1],["Miscellaneous","Sling Bag (maroon)",1],
+["Miscellaneous","Sling Bag (handmade)",1],["Miscellaneous","Sling Bag (furry beige)",1],
+["Miscellaneous","Sling Bag (high-end)",1],["Miscellaneous","Sling Bag (white)",1],
+["Miscellaneous","Tote (Gullylabs)",1],["Miscellaneous","Tote (black)",1],
+["Miscellaneous","Big Shoulder Bag (brown)",1],["Miscellaneous","Makeshift Backpack (black)",1],
+["Miscellaneous","Manicure Kit",2],["Miscellaneous","Sunglasses",2],["Miscellaneous","Baseball Cap",2],
+["Miscellaneous","Summer Hat",1],["Miscellaneous","Wool Gloves (pair)",1],["Miscellaneous","Winter Cap",2],
+["Miscellaneous","Ankle Socks (pairs)",5],
+["Miscellaneous","Bra, no-strap (unsure fit)",1],["Miscellaneous","Tight Shorts under skirts (beige)",1],
+["Miscellaneous","Tight Shorts under skirts (black)",1],["Miscellaneous","Period Panties",2],
+["Miscellaneous","Camisole (black)",1],["Miscellaneous","Shapewear (beige)",1],["Miscellaneous","Shapewear (black)",2],
+["Miscellaneous","Panties",7],["Miscellaneous","Bras",7],["Miscellaneous","Pantyhose",2],
+
+["Makeup","Mascara",2],["Makeup","Lip Gloss / Lip Oil",7],["Makeup","Crayon Lipstick",4],["Makeup","Lipstick",20],
+["Makeup","Foundation",1],["Makeup","Concealer",7],["Makeup","Color Corrector",3],["Makeup","BB Cream",1],
+["Makeup","Bronzer",1],["Makeup","Liquid Cheek Tint",1],["Makeup","Primer",2],["Makeup","Powder Sunscreen",1],
+["Makeup","Black Eyeliner",3],["Makeup","Kajal Pencil",1],["Makeup","Kajal Gel",1],["Makeup","Eyebrow Pencil",2],
+["Makeup","Brown Kajal",1],["Makeup","Silver Liner",1],["Makeup","Gold Liner",1],["Makeup","White Liner",1],
+["Makeup","Blue Liner",3],["Makeup","Lip Liner",9],["Makeup","Brushes & Beauty Blenders (set)",1],
+["Makeup","Eyeshadow Palette",4],["Makeup","Lipstick Palette",1],["Makeup","Highlighter",1],
+["Makeup","Blush Palette",1],["Makeup","Compact Powder",1],["Makeup","Gel Compact",1],["Makeup","Nail Paint",30],
+["Makeup","Nail Paint Remover",1],["Makeup","Clip-on Nails (set)",4]
+];
+
+let items = [];
+let wishlist = [];
+let activeTab = "All";
+let persistenceWorks = true;
+
+async function loadData(){
+  try{
+    const res = await window.storage.get('vault-sectioned-items', false);
+    if(res && res.value){ items = JSON.parse(res.value); }
+    else throw new Error('none');
+  }catch(e){
+    items = DEFAULT_ITEMS.map((row,i)=>({ id:'i'+i, section:row[0], name:row[1], qty:row[2] }));
+    await saveKey('vault-sectioned-items', items);
+  }
+  try{
+    const w = await window.storage.get('vault-wishlist', false);
+    if(w && w.value) wishlist = JSON.parse(w.value);
+  }catch(e){ wishlist = []; }
+  render();
+}
+async function saveKey(key, data){
+  try{
+    const r = await window.storage.set(key, JSON.stringify(data), false);
+    if(!r) throw new Error('empty');
+    if(!persistenceWorks){ persistenceWorks = true; updateNote(); }
+  }catch(e){
+    persistenceWorks = false; updateNote();
+  }
+}
+function saveItems(){ return saveKey('vault-sectioned-items', items); }
+function saveWishlist(){ return saveKey('vault-wishlist', wishlist); }
+function updateNote(){
+  document.getElementById('persistNote').textContent = persistenceWorks
+    ? "Saves automatically on this device."
+    : "Saving isn't working right now — this list will hold for this session only.";
+}
+function flash(msg){
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  setTimeout(()=>{ if(el.textContent===msg) el.textContent=''; }, 1300);
+}
+
+function buildTabs(){
+  const all = ["All", ...SECTIONS, "Wishlist"];
+  document.getElementById('tabs').innerHTML = all.map(s=>
+    `<button class="tab ${s===activeTab?'active':''}" data-sec="${s}">${s}</button>`
+  ).join('');
+  document.querySelectorAll('.tab').forEach(btn=>{
+    btn.onclick = ()=>{ activeTab = btn.dataset.sec; document.getElementById('searchInput').value=''; render(); };
+  });
+}
+function buildSectionSelect(){
+  const sel = document.getElementById('newSection');
+  sel.innerHTML = SECTIONS.map(s=>`<option value="${s}">${s}</option>`).join('');
+  if(SECTIONS.includes(activeTab)) sel.value = activeTab;
+}
+
+function render(){
+  buildTabs();
+  buildSectionSelect();
+
+  const isWishlist = activeTab === "Wishlist";
+  document.getElementById('addBoxItem').style.display = isWishlist ? 'none' : 'flex';
+  document.getElementById('addBoxWish').style.display = isWishlist ? 'flex' : 'none';
+
+  const list = document.getElementById('list');
+  const empty = document.getElementById('emptyMsg');
+  const query = document.getElementById('searchInput').value.trim().toLowerCase();
+
+  if(isWishlist){
+    document.getElementById('countLine').textContent = `${wishlist.length} on the wishlist`;
+    let vis = query ? wishlist.filter(w=>w.name.toLowerCase().includes(query)) : wishlist;
+    if(vis.length===0){
+      list.innerHTML=''; empty.textContent = query ? "Nothing matches that." : "Wishlist is empty.";
+      empty.style.display='block'; return;
+    }
+    empty.style.display='none';
+    list.innerHTML = vis.map(w=>`
+      <div class="row">
+        <div class="row-name">${w.name}</div>
+        <button class="row-del" data-wdel="${w.id}">remove</button>
+      </div>
+    `).join('');
+    list.querySelectorAll('[data-wdel]').forEach(btn=>{
+      btn.onclick = ()=>{
+        wishlist = wishlist.filter(w=>w.id!==btn.dataset.wdel);
+        saveWishlist(); render();
+      };
+    });
+    return;
+  }
+
+  let visible = items.filter(i=>{
+    if(activeTab!=="All" && i.section!==activeTab) return false;
+    if(query && !i.name.toLowerCase().includes(query)) return false;
+    return true;
+  });
+
+  const total = items.reduce((s,i)=>s+i.qty,0);
+  document.getElementById('countLine').textContent = activeTab==="All"
+    ? `${items.length} things · ${total} total`
+    : `${visible.length} things in ${activeTab}`;
+
+  if(visible.length===0){
+    list.innerHTML='';
+    empty.textContent = query ? "Nothing matches that." : "Nothing here yet — add something below.";
+    empty.style.display='block';
+    return;
+  }
+  empty.style.display='none';
+  list.innerHTML = visible.map(it=>`
+    <div class="row">
+      <div class="row-name">${it.name}${activeTab==="All" ? ` <span style="color:var(--ivory-dim);font-size:12px;">· ${it.section}</span>`:''}</div>
+      <div class="row-qty">
+        <button data-act="dec" data-id="${it.id}">−</button>
+        <span class="n">${it.qty}</span>
+        <button data-act="inc" data-id="${it.id}">+</button>
+      </div>
+      <button class="row-del" data-act="del" data-id="${it.id}">remove</button>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('[data-act]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const id = btn.dataset.id;
+      const idx = items.findIndex(i=>i.id===id);
+      if(idx===-1) return;
+      if(btn.dataset.act==='inc') items[idx].qty++;
+      if(btn.dataset.act==='dec') items[idx].qty = Math.max(0, items[idx].qty-1);
+      if(btn.dataset.act==='del') items.splice(idx,1);
+      render();
+      saveItems();
+    };
+  });
+}
+
+document.getElementById('addBtn').onclick = ()=>{
+  const nameEl = document.getElementById('newName');
+  const qtyEl = document.getElementById('newQty');
+  const name = nameEl.value.trim();
+  const qty = Math.max(1, parseInt(qtyEl.value)||1);
+  const section = document.getElementById('newSection').value;
+  if(!name){ flash('Type something first.'); return; }
+  items.push({ id:'i'+Date.now(), section, name, qty });
+  nameEl.value=''; qtyEl.value='1'; nameEl.focus();
+  flash('Added to '+section+'.');
+  render();
+  saveItems();
+};
+document.getElementById('newName').addEventListener('keydown', e=>{
+  if(e.key==='Enter') document.getElementById('addBtn').click();
+});
+
+document.getElementById('addWishBtn').onclick = ()=>{
+  const el = document.getElementById('wishName');
+  const name = el.value.trim();
+  if(!name){ flash('Type something first.'); return; }
+  wishlist.push({ id:'w'+Date.now(), name });
+  el.value=''; el.focus();
+  flash('Added to wishlist.');
+  render();
+  saveWishlist();
+};
+document.getElementById('wishName').addEventListener('keydown', e=>{
+  if(e.key==='Enter') document.getElementById('addWishBtn').click();
+});
+
+document.getElementById('searchInput').addEventListener('input', render);
+
+loadData();
+</script>
+</body>
+</html>
